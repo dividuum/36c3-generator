@@ -68,8 +68,6 @@ if(txt){
 	simText = txt;
 }
 
-
-
 // for sharing modal
 var modal;
 var span;
@@ -151,10 +149,24 @@ window.onload = function() {
 	setAnimationFunction();	
 }
 
+function convertDataURIToBinary(dataURI) {
+	var base64 = dataURI.substring(23);
+	var raw = window.atob(base64);
+	var rawLength = raw.length;
+
+	var array = new Uint8Array(new ArrayBuffer(rawLength));
+	for (i = 0; i < rawLength; i++) {
+		array[i] = raw.charCodeAt(i);
+	}
+	return array;
+};
+
+var encoder, output;
+
 //apply physics engine simulation to paper.js animation 
 function setAnimationFunction(view){
 	paper.view.onFrame = function(event){
-		
+        // console.log(jpegBytes);
 		if(restart){
 			clearSimulation();
 			restart = false;
@@ -163,7 +175,21 @@ function setAnimationFunction(view){
 			}else{
 				simulateSVG(uploadedSVG, detectSimulationEnd);
 			}
+			encoder = new Whammy.Video(50);
+			output = document.getElementById('output')
+			paper.view.zoom = 0.85;
 		}
+
+		var output_ctx = output.getContext("2d")
+		var frame = document.getElementById("paperCanvas");
+		output_ctx.fillStyle = 'black'
+		output_ctx.fillRect(0,0,1280,720); // videos cant handle transprency
+		output_ctx.drawImage(frame, 10, 10);
+
+
+		// var dataUri = canvas.toDataURL("image/jpeg", 1);
+		// var jpegBytes = convertDataURIToBinary(dataUri);
+		encoder.add(output_ctx);
 		
 		if(simulationRunning){
 			if(engine.timing.timestamp-startTime < parseFloat(endTime) || endTime == 0){ //slightly noise
@@ -184,8 +210,7 @@ function setAnimationFunction(view){
 				stopSimulation();
 				console.log(endTime-engine.timing.timestamp);
 			}
-			
-		}
+        }
 	}
 }
 
@@ -342,6 +367,25 @@ function stopSimulation(){
 	view.onFrame = null;
 	endTime = engine.timing.timestamp-startTime;
 	console.log("Simulation timestamp: "+engine.timing.timestamp);
+
+	if (encoder) {
+		console.log("foooo");
+		const output = encoder.compile();
+
+		const a = document.createElement('a');
+		document.body.appendChild(a);
+		var url = webkitURL.createObjectURL(output);
+		document.getElementById('awesome').src = url; //toString converts it to a URL via Object URLs, falling back to DataURL
+
+		// a.href = url;
+		// a.download = 'generator.webm';
+		// a.click();
+		// setTimeout(() => {
+		//   window.URL.revokeObjectURL(url);
+		//   document.body.removeChild(a);
+		// }, 100)
+		encoder = undefined
+	}
 	
 	//console.log(state.getLength());
 	while(state.hasNextNr()){
@@ -441,9 +485,12 @@ function simulateText(text, finializeFunc){
 		mousepos = [100,100];
 		crackPoint = new Path.Circle([-100,-100],5);
 		crackPoint.fillColor = textColor;
+
+		let size_e = document.getElementById('size')
+		let size = parseInt(size_e.value)
 		
-		var textwidth = font.getAdvanceWidth(text, 500);
-		var fontpaths = font.getPaths(text,(paper.view.viewSize.width-textwidth)/2,0,500);
+		var textwidth = font.getAdvanceWidth(text, size);
+		var fontpaths = font.getPaths(text,(paper.view.viewSize.width-textwidth)/2,0,size);
 
 		for(var i = 0; i<fontpaths.length; i++){
 			
@@ -1099,52 +1146,54 @@ function share(){
 //canvas zoom in
 function zoomIn(){
 	paper.view.zoom = paper.view.zoom+0.05;
+    console.log(paper.view.zoom)
 }
 
 //canvas zoom out
 function zoomOut(){
 	paper.view.zoom = paper.view.zoom-0.05;
+    console.log(paper.view.zoom)
 }
 
 //disable all boxed during replay
 function animationBoxes(){
-	document.getElementById("one").classList.add("disabled");
-	document.getElementById("two").classList.add("disabled");
-	document.getElementById("three").classList.add("disabled");
-	document.getElementById("four").classList.add("disabled");
-	document.getElementById("five").classList.add("disabled");
+// 	document.getElementById("one").classList.add("disabled");
+// 	document.getElementById("two").classList.add("disabled");
+// 	document.getElementById("three").classList.add("disabled");
+// 	document.getElementById("four").classList.add("disabled");
+// 	document.getElementById("five").classList.add("disabled");
 }
 
 //enable second phase boxed
 function enableBoxes(){
-	document.getElementById("three").classList.remove("disabled");
-	document.getElementById("four").classList.remove("disabled");
-	document.getElementById("five").classList.remove("disabled");
-	
-	document.getElementById("two").classList.add("disabled");
-	
-	document.getElementById("one").classList.remove("disabled");
+// 	document.getElementById("three").classList.remove("disabled");
+// 	document.getElementById("four").classList.remove("disabled");
+// 	document.getElementById("five").classList.remove("disabled");
+// 	
+// 	document.getElementById("two").classList.add("disabled");
+// 	
+// 	document.getElementById("one").classList.remove("disabled");
 }
 
 //disable second phase boxes
 function disableBoxes(){
-	document.getElementById("three").classList.add("disabled");
-	document.getElementById("four").classList.add("disabled");
-	document.getElementById("five").classList.add("disabled");
-	
-	document.getElementById("two").classList.remove("disabled");
-	
-	document.getElementById("one").classList.remove("disabled");
+// 	document.getElementById("three").classList.add("disabled");
+// 	document.getElementById("four").classList.add("disabled");
+// 	document.getElementById("five").classList.add("disabled");
+// 	
+// 	document.getElementById("two").classList.remove("disabled");
+// 	
+// 	document.getElementById("one").classList.remove("disabled");
 }
 
 //disable share button 
 function disableShare(){
-	document.getElementById("shareButton").classList.add("disabled");
+//	document.getElementById("shareButton").classList.add("disabled");
 }
 
 //enable share button
 function enableShare(){
-	document.getElementById("shareButton").classList.remove("disabled");
+//	document.getElementById("shareButton").classList.remove("disabled");
 }
 
 //let user download canvas content as SVG

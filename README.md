@@ -2,6 +2,8 @@
 Generative Artwork for 36th Chaos Communication Congress  
 [Live Version](https://36c3.bleeptrack.de)  
 
+Now with ugly way to create wmv videos within a browser.
+
 ![generator screenshot](https://github.com/bleeptrack/36c3-generator/blob/master/img/screenshot.png)
 
 # Uses:

@@ -10,6 +10,7 @@
     <script src="matter.js"></script>
     <script src="paper-full.js"></script>
     <script src="generator.js"></script>
+    <script src="whammy.js"></script>
     
   </head>
   <body>
@@ -35,6 +36,7 @@
 		<div class="stage orange" id="one">
 			<div class="number">1</div>
 			<h2 class="orange" >Add Text or upload SVG</h2>
+            <input type="number" id="size" autocomplete="off" value='300'>
 			<div class="stagecontent">
 				<span style="margin: 0 auto;"><input type="text" id="simulationtext" placeholder="your word" autocomplete="off" maxlength="14"></input><button onclick="updateText()">&gt;</button></span>
 				<p>- or -</p>
@@ -58,7 +60,7 @@
 				<button onclick="setCaption(true)">insert</button>
 			</div>
 		</div>
-		<div class="stage orange disabled" id="four">
+		<div class="stage orange" id="four">
 			<div class="number">4</div>
 			<h2 class="orange" >Click to Crack</h2>
 			<div class="stagecontent">
@@ -67,7 +69,7 @@
 				<p>The red dot</br>shows the selected</br>place.</p>
 			</div>
 		</div>
-		<div class="stage orange disabled" id="five">
+		<div class="stage orange" id="five">
 			<div class="number">5</div>
 			<h2 class="orange" >Choose your style</h2>
 			<div class="stagecontent">
@@ -84,6 +86,9 @@
 			</div>
 		</div>
     </div>
-    <canvas id="paperCanvas" resize="true"></canvas>
+    <!-- <canvas id="paperCanvas" resize="true"></canvas> -->
+    <canvas id="paperCanvas" width=1280 height=720 style='border: 5px solid white;'></canvas>
+    <canvas id="output" width=1280 height=720 style='display: none'></canvas>
+    <video id="awesome" width="640" height="360" controls autoplay loop></video>
   </body>
 </html>
