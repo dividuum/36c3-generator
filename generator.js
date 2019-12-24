@@ -45,6 +45,8 @@ var uploadedSVG;
 var captionText = [];
 var simText = "36c3";
 var simSVG = "";
+var animation = false;
+var moveCaption = false;
 
 //RNG
 var state = new StateSaver();
@@ -54,6 +56,7 @@ var seed = url.searchParams.get("seed");
 var eT = url.searchParams.get("time");
 var cT = url.searchParams.get("caption");
 var txt = url.searchParams.get("text");
+var anim = url.searchParams.get("animation");
 
 if(seed){
 	state = new StateSaver(seed);
@@ -67,6 +70,9 @@ if(cT){
 if(txt){
 	simText = txt;
 }
+if(anim){
+	animation = true;
+}
 
 // for sharing modal
 var modal;
@@ -74,14 +80,25 @@ var span;
 
 window.onload = function() {
 	paper.setup('paperCanvas');
-	
-	
+
+	if(animation){
+		var menue = document.getElementsByClassName("menue")[0];
+		menue.style.display = "none";
+		var zoom = document.getElementsByClassName("zoom")[0];
+		zoom.style.display = "none";
+		var infobox = document.getElementById("infobox");
+		infobox.style.display = "none";
+	}
+
+
 	//modal stuff
 	// Get the modal
 	modal = document.getElementById("myModal");
 
 	// Get the <span> element that closes the modal
 	span = document.getElementsByClassName("close")[0];
+
+	//moveCaptionButton = document.getElementById("moveCaption");
 
 	// When the user clicks on <span> (x), close the modal
 	span.onclick = function() {
@@ -93,16 +110,16 @@ window.onload = function() {
 		if (event.target == modal) {
 			modal.style.display = "none";
 		}
-	} 
-	
-	
-	
-	
+	}
+
+
+
+
 	// create a physics engine
 	engine = Engine.create({
 		enableSleeping: true
 	});
-	
+
 	// run the engine
 	var runner = Matter.Runner.create({
 		//delta: 1000 / 60,
@@ -112,41 +129,54 @@ window.onload = function() {
 	Matter.Runner.run(runner, engine);
 
 	// run the renderer
-	// uncomment for debugging 
+	// uncomment for debugging
 	//Render.run(render);
-	
+
 	//Mouse events for adding cracks
 	view.onMouseDown = function(event) {
-		if(crackPoint){
-			mousepos = event.point;
-		
-			if(!simulationRunning){
-				handleCrack(true, mousepos);
-				
-			}
-			
+		mousepos = event.point;
+
+		if(simulationRunning){
+			return;
 		}
+		
+		captionObjects.forEach(function(capObj){
+			if(capObj.contains(mousepos)){
+				moveCaption = true;
+			}
+		});
+
+		if(crackPoint && !moveCaption){
+			handleCrack(true, mousepos);
+			return;
+		}
+		
+		
 	}
 
 	//update red position dot when mouse is moved
 	view.onMouseMove = function(event) {
 		if(crackPoint){
 			mousepos = event.point;
-		
+
 			if(!simulationRunning){
 				var o = getClosestPoint(mousepos);
 
 				if(o.point){
 					crackPoint.position = o.point;
 				}
-				
+
 			}
 		}
 	}
-
 	
-		
-	setAnimationFunction();	
+	view.onMouseUp = function(event){
+		moveCaption = false;
+	}
+
+
+
+	setAnimationFunction();
 }
 
 function convertDataURIToBinary(dataURI) {
@@ -166,7 +196,6 @@ var encoder, output;
 //apply physics engine simulation to paper.js animation 
 function setAnimationFunction(view){
 	paper.view.onFrame = function(event){
-        // console.log(jpegBytes);
 		if(restart){
 			clearSimulation();
 			restart = false;
@@ -201,9 +230,9 @@ function setAnimationFunction(view){
 						concreteObjects[i].applyMatrix = true;
 						concreteObjects[i].position = physicbounds.center;
 						concreteObjects[i].rotate( (physicObjects[i].angle - physicObjectsAngles[i]) * (180/Math.PI));
-						physicObjectsAngles[i] = physicObjects[i].angle;	
+						physicObjectsAngles[i] = physicObjects[i].angle;
 					}
-					
+
 				}
 			}else{
 				console.log("stop");
@@ -220,22 +249,22 @@ function handleCrack(save, pos){
 	if(save){
 		state.saveUserInput(pos.x);
 		state.saveUserInput(pos.y);
-			
+
 	}else{
-	
+
 		var ptx = state.getNextInt();
 		var pty = state.getNextInt();
 		pos = new Point(ptx, pty);
 	}
 	var o = getClosestPoint(pos);
-				
+
 
 	if(o.point){
-					
+
 		var insertpath;
 		var startCP = false;
 		var path = concreteObjects[o.idx];
-		
+
 		if(path._class=="CompoundPath"){
 			var item = path.children[0].clone();
 			item.insertAbove(path);
@@ -247,14 +276,14 @@ function handleCrack(save, pos){
 		}
 		var p = o.point;
 		var timeout = 10;
-					
+
 		var rnglength = state.getLength();
 		var crackobj = calcCrackShape(insertpath, p);
 		var newshape = crackobj.newshape;
 		var leaf = crackobj.leaf;
 		var rnglength2 = state.getLength();
-					
-		if(newshape != null){//crack can be calculated here			
+
+		if(newshape != null){//crack can be calculated here
 			while(newshape._class=="CompoundPath" && timeout>0){
 				console.log("removing last: "+rnglength2-rnglength);
 				state.removeLast(rnglength2-rnglength);
@@ -267,17 +296,17 @@ function handleCrack(save, pos){
 				timeout--;
 				rnglength2 = state.getLength();
 			}
-						
+
 			if(newshape._class!="CompoundPath"){
-				
+
 				if(startCP){
-					
-					
+
+
 					for(var i = 1; i<path.children.length; i++){
 						console.log(i);
 						var item = path.children[i].clone();
 						console.log(item);
-						
+
 						var cut = newshape.subtract(item);
 						newshape.remove();
 						item.remove();
@@ -289,7 +318,7 @@ function handleCrack(save, pos){
 				concreteObjects[o.idx].remove();
 				concreteObjects.splice(o.idx, 1);
 				concreteObjects.push(newshape);
-				
+
 				leaves.push(leaf);
 				leaf.remove();
 				if(hope){//no worries, there's still hope ;)
@@ -316,7 +345,7 @@ function setCaption(isNew){
 		cap.remove();
 	});
 	captionObjects = [];
-	
+
 	if(isNew){
 		var caption = document.getElementById("caption").value.split('\n');
 		if(caption.length==1 && caption[0]==""){
@@ -329,9 +358,9 @@ function setCaption(isNew){
 	if(captionText.length>0){
 		var leftbound = getClosestPoint([paper.view.viewSize.width, paper.view.viewSize.height/2]);
 
-		
+
 		opentype.load("BO-2am.ttf", function(err, font) {
-			
+
 			captionText.forEach(function(text, i, arr){
 				var shape = null;
 				var fontpaths = font.getPaths(text,200,groundheight+i*100,100);
@@ -354,6 +383,12 @@ function setCaption(isNew){
 				}
 				shape.bounds.topRight.x = leftbound.point.x;
 				shape.rotate(state.rnd(0,10)-5);
+				shape.onMouseDrag = function(event)  {
+					if(moveCaption){
+					event.target.bounds.topRight.x = event.target.bounds.topRight.x + event.delta.x;
+					event.target.bounds.topRight.y = event.target.bounds.topRight.y + event.delta.y;
+					}
+				}
 				captionObjects.push(shape);
 			});
 		});
@@ -398,15 +433,15 @@ function stopSimulation(){
 
 //start a new simulation from user input text
 function updateText(){
-	
+
 	var text = document.getElementById("simulationtext").value;
 	document.title = text;
-	
+
 	if(text.length>0){
 		clearSeed();
 		setAnimationFunction();
 		enableShare();
-		
+
 		simText = text;
 		pathIsText = true;
 		restart = true;
@@ -450,9 +485,10 @@ function clearSimulation(){
 	project.activeLayer.removeChildren();
 	Matter.World.clear(this.engine.world);
 	Matter.Engine.clear(this.engine);
-	
+
 	simulationRunning = true;
-	
+	moveCaption = false;
+
 	var ground = Bodies.rectangle(-100, groundheight, 6400, 60, { isStatic: true });
 	ground.frictionStatic = staticFriction;
 	ground.friction = friction;
@@ -460,8 +496,8 @@ function clearSimulation(){
 
 	// add all of the bodies to the world
 	World.add(engine.world, [ground]);
-	
-	
+
+
 }
 
 //Main Simulation Routine for text
@@ -471,11 +507,11 @@ function simulateText(text, finializeFunc){
 	}
 	startTime = engine.timing.timestamp;
 	console.log("startTime: "+startTime);
-	
+
 	opentype.load("BO-Midnight.ttf", function(err, font) {
-		
+
 		text = text.replace(/\s/g,'');
-		
+
 		var amount, glyph, ctx, x, y, fontSize;
 		if (err) {
 			console.log(err.toString());
@@ -493,23 +529,35 @@ function simulateText(text, finializeFunc){
 		var fontpaths = font.getPaths(text,(paper.view.viewSize.width-textwidth)/2,0,size);
 
 		for(var i = 0; i<fontpaths.length; i++){
-			
+
 			if(fontpaths[i].commands == 0) continue;
-			
+
 			//import test as SVG into paper
 			var boundingboxData = fontpaths[i].getBoundingBox();
 			var boundingbox = new Rectangle([boundingboxData.x1, boundingboxData.y1], [boundingboxData.x2-boundingboxData.x1, boundingboxData.y2-boundingboxData.y1]);
 			var paperpath = paper.project.importSVG(fontpaths[i].toSVG());
 			paperpath.fillColor = '#DCDCDC';
-			
+
+			if(i==0){
+				console.log(paper.view.bounds.x);
+				console.log(boundingbox.bottomLeft.x);
+				while(paper.view.bounds.x+200>boundingbox.bottomLeft.x){
+					paper.view.zoom = paper.view.zoom-0.05;
+					console.log(paper.view.bounds.x);
+					console.log(boundingbox.bottomLeft.x);
+				}
+			}
 			//paperpath = prepareLetter(paperpath, leanside);
-			
+
 			var rrad = (state.getNextInt(0,60)-30)/100;
 			paperpath.rotate(rrad * (180/Math.PI));
-			
+
 			paperpath.bounds.bottomCenter = [boundingbox.center.x, groundheight-80];
+			if(animation){
+				paperpath.bounds.bottomCenter = [boundingbox.center.x, groundheight-380];
+			}
 			crackShapeObject(paperpath);
-	
+
 		}
 		crackPoint.bringToFront();
 
@@ -522,9 +570,9 @@ function simulateSVG(svgstring, finializeFunc){
 	mousepos = [100,100];
 	crackPoint = new Path.Circle([100,100],5);
 	crackPoint.fillColor = textColor;
-	
+
 	var svg = paper.project.importSVG(svgstring,{onLoad: svg => {handleSVG(svg); finializeFunc();}, onError: svgError, insert: true} );
-	
+
 	crackPoint.bringToFront();
 }
 
@@ -533,25 +581,25 @@ function svgError(err){
 }
 
 function handleSVG(svg){
-		
-		
+
+
 		svg.scale(500/svg.bounds.height);
 		svg.position = [paper.view.viewSize.width/2,320];
 		for(var i = 0; i<svg.children.length; i++){
 			if(!svg.children[i].type){
 				var item = svg.children[i].clone();
 				item.insertAbove(svg);
-				
+
 				if(svg.children[i]._class=="Group" ){
 					handleSVG(item);
 				}else{
 					crackShapeObject(item);
 				}
 			}
-			
+
 		}
 		svg.remove();
-	
+
 }
 
 //adds a Path to the Engine World
@@ -562,7 +610,7 @@ function addToWorld(path){
 		body.friction = friction;
 		body.frictionStatic = staticFriction;
 		body.density = density;
-			
+
 		World.add(engine.world, body);
 		path.fillColor = concreteColor;
 		concreteObjects.push(path);
@@ -584,7 +632,7 @@ function detectAllSleeping() {
 	const sleepingPercentage = amountOfSleepingObjects / physicObjects.length;
 	const allSleeping = physicObjects.every(o => o.isSleeping);
 	console.log('allSleeping?', allSleeping, (sleepingPercentage * 100).toFixed(0) + '%');
-	if (allSleeping) {
+	if (allSleeping && simulationRunning) {
 		stopSimulation();
 	}
 }
@@ -605,8 +653,8 @@ function getClosestPoint(pos){
 		closestPointByPath.push(p);
 		dists.push(p.subtract(pos).length);
 	}
-	
-	
+
+
 	var idx = dists.indexOf(Math.min(...dists));
 	var ob = {
 		point: closestPointByPath[idx],
@@ -618,16 +666,16 @@ function getClosestPoint(pos){
 //Breakes a path object into pieces and inserts them into the simulation
 function crackShapeObject(path){
 	var oldCenter = path.position;
-	
+
 	var crackedParts = breakPart(path, 0);
 	var brokeparts = crackedParts[0];
 	var letterparts = crackedParts[1];
-	
+
 	//ToDo: check if not null
 	letterparts.forEach(function(path, idx, arr) {
 			addToWorld(path);
 	});
-	
+
 	brokeparts.forEach(function(path, idx, arr) {
 			addToWorld(path);
 	});
@@ -649,7 +697,7 @@ function jitterPath(path){
 
 //calculates thin, long crack shape at certain point on path
 function calcCrackShape(path, point){
-	
+
 	var offs = path.getOffsetOf(point);
 	var n = path.getNormalAt(offs);
 	var saven = n;
@@ -665,7 +713,7 @@ function calcCrackShape(path, point){
 		cutShape.remove();
 		return {newshape: null, leaf: null};
 	}
-	
+
 	if(line.length>100){
 		var rotation2 = state.getNextInt(0,20)-40;
 		var idx = Math.floor(line.segments.length/2);
@@ -684,17 +732,17 @@ function calcCrackShape(path, point){
 		cutShape = newcutShape;
 	}
 
-	
-	
+
+
 	var newshape = path.subtract(cutShape);
 	cutShape.remove();
 	return {newshape: newshape, leaf: leaf};
-	
+
 }
 
 //creates leaves for hope state
 function createLeaves(inters, originPath, leafShape){
-	
+
 	var calcLine = new Path();
 	if(inters[0] === undefined){
 		//leaf can not be calculated here
@@ -705,11 +753,11 @@ function createLeaves(inters, originPath, leafShape){
 	calcLine.add(inters[inters.length-1].point);
 	var point = calcLine.getPointAt(calcLine.length/2);
 	var normal = calcLine.getNormalAt(calcLine.length/2);
-	
+
 	if(originPath.contains(point.add(normal.multiply(5)))){
 		normal = normal.multiply(-1);
 	}
-	
+
 	var middleLine = new Path();
 	middleLine.strokeWidth = 6;
 	middleLine.strokeColor = leafColor;
@@ -722,10 +770,10 @@ function createLeaves(inters, originPath, leafShape){
 	if(angle<0){
 		side = -1
 	}
-	
+
 	var height = state.getNextInt(20,40);
 	tip = point.add(normal.multiply(height));
-	
+
 	var l1 = state.getNextInt(15,20);
 	var l2 = state.getNextInt(20,40);
 	var l3 = state.getNextInt(45,70);
@@ -738,7 +786,7 @@ function createLeaves(inters, originPath, leafShape){
 	outerLine.lineBy(0,-l1);
 	outerLine.lineBy(side*l2,-l2);
 	outerLine.lineBy(side*l3,0);
-	
+
 	var innerLine = new Path();
 	innerLine.strokeColor = leafColor;
 	innerLine.opacity = 0;
@@ -746,15 +794,15 @@ function createLeaves(inters, originPath, leafShape){
 	innerLine.add(tip);
 	innerLine.lineBy(side*l2,-l2);
 	innerLine.lineBy(side*l3*0.5,0);
-	
+
 	outerLine.add(new Point(innerLine.lastSegment.point.x, tip.y));
 	outerLine.add(new Point(innerLine.segments[1].point.x, tip.y));
-	
+
 	var innerCircle = new Path.Circle(innerLine.lastSegment.point, 6);
 	innerCircle.fillColor = leafColor;
 	var outerCircle = new Path.Circle(outerLine.lastSegment.point, 6);
 	outerCircle.fillColor = leafColor;
-	
+
 	var offs1 = leafShape.getOffsetOf(inters[0].point);
 	var offs2 = leafShape.getOffsetOf(inters[inters.length-1].point);
 	console.log(offs1+" "+offs2);
@@ -771,7 +819,7 @@ function createLeaves(inters, originPath, leafShape){
 	root.fillColor = leafColor;
 	root.opacity = 0;
 	console.log(root);
-	
+
 	var leafGroup = new Group();
 	leafGroup.addChild(root);
 	leafGroup.addChild(innerLine);
@@ -786,13 +834,13 @@ function calcCrackLine(path, point, direction, backset){
 	var line = new Path.Line(point.add(direction.multiply(backset)), point.add(direction.multiply(-500)));
 	line.strokeColor = '#FF4500';
 	line.strokeWidth = 3;
-	
+
 	var inters = line.getIntersections(path);
 	var intersoffs = inters[1-inters.length%2].offset;
 	var cutline = line.splitAt(intersoffs*state.getNextInt(50,80)/100);
 	cutline.remove();
 	line.remove();
-	
+
 	var jitterline = jitterPath(line);
 	jitterline.strokeWidth = 3;
 	jitterline.strokeColor = 'red';
@@ -802,22 +850,22 @@ function calcCrackLine(path, point, direction, backset){
 
 //calculates a crack shape that will be cut out from the main shape
 function calcCrackStencil(jitterline, tangent, maxwidth){
-	
+
 	var cutShape = new Path({
 		fillColor: 'green'
 	});
-	
+
 	var t = tangent;
 	var wdth = jitterline.segments.length;
 	for(var i = 0; i<jitterline.segments.length; i++){
 		var p = jitterline.segments[i].point;
 		var o = jitterline.getOffsetOf(p);
-		
+
 		var w = wdth;
 		if(wdth>maxwidth){
 			w = maxwidth;
 		}
-		
+
 		if(i==jitterline.segments.length-1){
 			cutShape.insert(i,new Segment(p, null, null));
 		}else{
@@ -838,17 +886,17 @@ function calcBreakShape(path){
 	boundspath.add(path.bounds.topLeft);
 	boundspath.add(path.bounds.topRight);
 	boundspath.add(path.bounds.bottomRight);
-	
+
 	var size = state.getNextInt(boundspath.length/7,boundspath.length/3);
 	//ToDo nichts oben abbrechen lassen?
 	var o1 = state.getNextInt(0,boundspath.length-size);
 	var o2 = (o1 + size) ;
-	
+
 	var p1 = boundspath.getPointAt(o1);
 	var p2 = boundspath.getPointAt(o2);
 	var n1 = boundspath.getNormalAt(o1);
 	var n2 = boundspath.getNormalAt(o2);
-		
+
 	var breakshape = new Path();
 	breakshape.add(new Segment(p1, null, n1.multiply(-state.getNextInt(80,130))));
 	breakshape.add(new Segment(p2, n2.multiply(-state.getNextInt(80,130)), null));
@@ -862,17 +910,17 @@ function calcBreakShape(path){
 	}
 	breakshape.closed = true;
 	boundspath.remove();
-	
+
 	var jittershape = jitterPath(breakshape);
 	breakshape.remove();
-	
+
 	return jittershape;
 }
 
 //Returns a random Point inside a path
 function getPointInShape(shape){
 	var point = shape.bounds.topLeft.add( shape.bounds.size.multiply( Point.random() ) );
-	
+
 	while(!shape.contains(point)){
 		point = shape.bounds.topLeft.add( shape.bounds.size.multiply( Point.random() ) );
 	}
@@ -886,7 +934,7 @@ function breakPart(path){
 	var parts = [];
 	var brokepath = new Path();
 	var newpath = new Path();
-	
+
 	while(brokepath.segments && brokepath.segments.length<=0){
 		newpath.remove();
 		brokepath.remove();
@@ -894,32 +942,32 @@ function breakPart(path){
 		newpath = path.subtract(breakStencil);
 		brokepath = path.intersect(breakStencil);
 	}
-	
-	
+
+
 	if(brokepath._class=="CompoundPath"){
 		var brokeparts = [];
-		for(var i = 0; i<brokepath.children.length; i++){ 
-		
+		for(var i = 0; i<brokepath.children.length; i++){
+
 			//if(item !== 'undefined'){
 				var item = brokepath.children[i].clone();
 				item.fillColor = concreteColor;
 				item.insertAbove(brokepath);
 				brokeparts.push(item);
-				
+
 			//}
 		}
 		parts.push(brokeparts);
 		brokepath.remove();
-		
+
 	}else{
 		parts.push([brokepath]);
 	}
-	
+
 	if(newpath._class=="CompoundPath"){
 		var newparts = [];
-		
-		for(var i = newpath.children.length-1; i>0; i--){ //check only second paths, not main path 
-		
+
+		for(var i = newpath.children.length-1; i>0; i--){ //check only second paths, not main path
+
 			//if(item !== 'undefined'){
 			if(!newpath.children[0].contains(newpath.children[i].position)){
 				var item = newpath.children[i].clone();
@@ -927,10 +975,10 @@ function breakPart(path){
 				item.insertAbove(newpath);
 				newparts.push(item);
 				newpath.children.splice(i,1);
-			}	
+			}
 			//}
 		}
-		
+
 		if(newpath.children.length > 1){ //still a compund path. has holes
 			var item = newpath.clone();
 			item.fillColor = concreteColor;
@@ -942,24 +990,24 @@ function breakPart(path){
 			item.insertAbove(newpath);
 			newparts.push(item);
 		}
-		
-		
+
+
 		parts.push(newparts);
 		newpath.remove();
 	}else{
 		parts.push([newpath]);
 	}
-	
+
 	path.remove();
 	breakStencil.remove();
-	
+
 	return parts;
 }
 
 //transforms a paper.js path into points for matter engine
 function paper2matter(paperpath) {
-	var pp; 
-	
+	var pp;
+
 	if(paperpath._class == "CompoundPath"){
 		pp = paperpath.children[0].clone();
 	}else{
@@ -1020,32 +1068,32 @@ function setHope(){
 //animation for growing leaves
 function animateLeaf(leafobject){
 	var concrete = concreteObjects[concreteObjects.length -1];
-	
+
 	var innerstates = []
 	var outerstates = []
-	
+
 	var tweenstate = leafobject.children[1].clone({insert: false});
 
 	for(var x = 0; x<tweenstate.segments.length-1; x++){
-		
+
 		var ts = leafobject.children[1].clone({insert: false});
 		for(var i = x; i<ts.segments.length; i++){
 			ts.segments[i] = new Segment(ts.segments[x].point, null, null);
 		}
 		innerstates.push(ts);
 	}
-	
+
 	var tweenstate2 = leafobject.children[2].clone({insert: false});
 
 	for(var x = 0; x<tweenstate2.segments.length-1; x++){
-		
+
 		var ts = leafobject.children[2].clone({insert: false});
 		for(var i = x; i<ts.segments.length; i++){
 			ts.segments[i] = new Segment(ts.segments[x].point, null, null);
 		}
 		outerstates.push(ts);
 	}
-	
+
 	var circlesmall1 = leafobject.children[3].clone({insert: false});
 	circlesmall1.scale(0.01);
 	var circlesmall2 = leafobject.children[4].clone({insert: false});
@@ -1058,18 +1106,18 @@ function animateLeaf(leafobject){
 	circlesmall1.insertAbove(concrete);
 	circlesmall2.insertAbove(concrete);
 	root1.insertAbove(concrete);
-	
+
 	animatedLeaves.push(tweenstate);
 	animatedLeaves.push(tweenstate2);
 	animatedLeaves.push(circlesmall1);
 	animatedLeaves.push(circlesmall2);
 	animatedLeaves.push(root1);
 
-	
+
 	var startTween = root1.tween({opacity: 0}, {opacity: 1}, {duration: state.rnd(150,350), start: false});
 	startTween.start();
 	startTween.then(function(){
-	
+
 
 		var tween = tweenstate.tween({strokeColor: leafColor, opacity: 1}, state.rnd(50,150));
 		tween.onUpdate = function(event) {
@@ -1087,8 +1135,8 @@ function animateLeaf(leafobject){
 				};
 			});
 		});
-		
-		
+
+
 		var tween2 = tweenstate2.tween({strokeColor: leafColor, opacity: 1}, state.rnd(50,150));
 		tween2.onUpdate = function(event) {
 			tweenstate2.interpolate(outerstates[0], outerstates[1] , event.factor);
@@ -1129,9 +1177,9 @@ function animateLeaf(leafobject){
 				});
 			});
 		});
-		
+
 	});
-	
+
 }
 
 //creates sharing url and shows modal
@@ -1186,7 +1234,7 @@ function disableBoxes(){
 // 	document.getElementById("one").classList.remove("disabled");
 }
 
-//disable share button 
+//disable share button
 function disableShare(){
 //	document.getElementById("shareButton").classList.add("disabled");
 }
@@ -1200,7 +1248,7 @@ function enableShare(){
 function downloadSVG(){
 	crackPoint.remove();
 	paper.view.update();
-    var svg = project.exportSVG({ asString: true, bounds: 'content' });    
+    var svg = project.exportSVG({ asString: true, bounds: 'content' });
     var svgBlob = new Blob([svg], {type:"image/svg+xml;charset=utf-8"});
     var svgUrl = URL.createObjectURL(svgBlob);
     var downloadLink = document.createElement("a");
